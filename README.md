@@ -1,7 +1,7 @@
 ## 1D Euler Equations Solver (Work in Progress)
 
 This repository contains a **finite-volume 1D solver** for the compressible **Euler equations**:
-$\frac{\partial \mathbf{U}}{\partial t} + \frac{\partial \mathbf{F}(\mathbf{U})}{\partial x} = 0,
+$$\frac{\partial \mathbf{U}}{\partial t} + \frac{\partial \mathbf{F}(\mathbf{U})}{\partial x} = 0,
 \quad
 \mathbf{U} =
 \begin{bmatrix}
@@ -13,7 +13,7 @@ $\frac{\partial \mathbf{U}}{\partial t} + \frac{\partial \mathbf{F}(\mathbf{U})}
 \rho u \\ \rho u^2 + p \\ u(E+p)
 \end{bmatrix},
 \quad
-p = (\gamma - 1)\left(E - \tfrac{1}{2}\rho u^2\right)$
+p = (\gamma - 1)\left(E - \tfrac{1}{2}\rho u^2\right)$$
 
 ### Features (current)
 - **Time integration**
