@@ -29,7 +29,7 @@ $$
 ### Features (current)
 - **Time integration**
   - Forward Euler
-  - TVD Runge–Kutta, 3rd order (SSP-RK3)
+  - TVD Runge–Kutta, 3rd order 
 
 - **Flux limiters**
   - Minmod
