@@ -45,6 +45,7 @@ $$
   - HLL
   - HLLC
 ![Shu-Osher density comparison](images/shu_osher_density_comparison.png)
+![Sod Shock Tube Rieman SOlver Comparison](images/Sod_flux_comparison.png)
 
 
 
