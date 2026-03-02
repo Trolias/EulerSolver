@@ -8,9 +8,10 @@ from helpers import*
 
 
 # Creating fields
-x = jnp.linspace(params.Lstart, params.Lend, params.N)
-U = jnp.zeros((params.N,3))
-CSV_L = jnp.zeros((params.N-1, 3))
+ng = params.gc # Number of ghost nodes
+x = params.Lstart + (jnp.arange(params.N) + 0.5)*params.dx
+U = jnp.zeros((params.N + 2*ng ,3))
+CSV_L = jnp.zeros((params.N + 2*ng-1, 3))
 CSV_R = jnp.zeros_like(CSV_L)
 
 # Initialising Fields
@@ -18,7 +19,7 @@ rho = 0.0
 u = 0.0
 p = 0.0
 
-for i in range(params.N):
+for i in range(params.N+ng):
     if (params.cas == 1):
 
         if x[i] <= 0.5:  
@@ -37,13 +38,19 @@ for i in range(params.N):
             u =  2.629369
             p = 10.3333
         else:
-            rho = 1.0 + 0.5*jnp.sin(5.0*x[i])
+            rho = 1.0 + 0.2*jnp.sin(5.0*x[i])
             u = 0.0
             p = 1.0
 
     U = U.at[i, 0].set(rho)
     U = U.at[i, 1].set(rho*u)
     U = U.at[i, 2].set( p/(params.gamma-1) + 0.5*rho*u**2)
+
+
+U, CSV_L, CSV_R = Boundary_Conditions(U, CSV_L, CSV_R)    # !!! This line is IMPORTANT !!!
+# PV = calc_PV(U[ng:-ng,:])
+# plt.plot(x,PV[:,0])
+# plt.show()
 
 
 t = 0.0
@@ -54,7 +61,7 @@ while (t < params.t_end):
     # Calculate Primite Varibaels (PV)
     PV = calc_PV(Uold)
     # Compute suitable time_step based on maximum speed
-    dt = calc_dt(Uold, PV[:,2])
+    dt = calc_dt(Uold[ng:-ng], PV[ng:-ng,2])
     dt = jnp.minimum(dt, params.t_end - t)
     # jax.debug.print("dt = : {d_t}", d_t = dt)
 
@@ -63,12 +70,12 @@ while (t < params.t_end):
     
     # Update Solution
     U_interior = solve(Uold, U_L, U_R, Intercell_Flux, dt, params.time_integrators[params.tim])
-    U = U.at[1:-1,:].set(U_interior)
+    U = Uold.at[ng:-ng,:].set(U_interior)
     
     # Update time 
     t = t + dt
 
-PV = calc_PV(U)
+PV = calc_PV(U[ng:-ng,:])
 
 plt.plot(x, PV[:,0], color = 'magenta')
 plt.xlim(params.Lstart, params.Lend)
@@ -77,7 +84,7 @@ plt.legend()
 
 plt.show()
 
-save_dat("HLLC_MUSCL_ShuOsher801.dat", x, PV)
+save_dat("DebugWENO.dat", x, PV)
 
-plot_compare("HLLC_MUSCL_ShuOsher801.dat", "HLLC_WENO5_Char_ShuOsher801.dat",
-             label_a="WENO_cons", label_b="WENO_char")
+# plot_compare("DebugWENO.dat","ShuOsher5001.dat",
+#              label_a="Debug", label_b="Exact")

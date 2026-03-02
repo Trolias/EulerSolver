@@ -1,6 +1,7 @@
-N =801
+N =1200
+gc = 3 #ghost cells
 gamma = 1.4
-CFL = 0.3
+CFL = 0.8
 
 tim = 2
 time_integrators = {
@@ -14,7 +15,7 @@ limiters = {
     2: 'VanLeer',
 }
 
-shm = 2
+shm = 3
 Scheme = {
     1: 'Constant',
     2: 'MUSCL',
@@ -45,10 +46,10 @@ if cas == 1:    # Sod's Shock Tube
     Lend = 1.0
     t_end = 0.2
 elif cas == 2:  # Shu_Osher
-    Lstart = -5.0  
-    Lend = 5.0
+    Lstart = -4.5  
+    Lend = 4.5
     t_end = 1.8
 else:
     L = 1.0  
 
-dx = (Lend - Lstart) / (N-1)
+dx = (Lend - Lstart) / (N)
