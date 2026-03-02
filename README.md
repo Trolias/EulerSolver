@@ -45,4 +45,4 @@ $$
   - HLL
   - HLLC
 
-
+![Shu-Osher density comparison](images/shu_osher_density_comparison.png)
