@@ -1,4 +1,4 @@
-## 1D Euler Equations Solver (Work in Progress)
+## 1D Euler Equations Solver 
 
 This repository contains a **finite-volume 1D solver** for the compressible **Euler equations**:
 
