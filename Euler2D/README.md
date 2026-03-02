@@ -58,3 +58,7 @@ $$
   - Rusanov (Local Lax–Friedrichs)
   - HLL
   - HLLC (Extended for transverse waves)
+
+![Isentropic Vortex animation](Riemann_20s.gif)
+
+![2D Riemann problem animation](vor_20s.gif)
