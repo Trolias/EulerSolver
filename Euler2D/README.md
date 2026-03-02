@@ -59,6 +59,6 @@ $$
   - HLL
   - HLLC (Extended for transverse waves)
 
-![Isentropic Vortex animation](\images\vor_20s.gif)
+![Isentropic Vortex animation](images/vor_20s.gif)
 
-![2D Riemann problem animation](\images\Riemann_20s.gif)
+![2D Riemann problem animation](images/Riemann_20s.gif)
