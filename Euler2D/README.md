@@ -58,6 +58,7 @@ $$
   - Rusanov (Local Lax–Friedrichs)
   - HLL
   - HLLC (Extended for transverse waves)
+  - Benchamrks: Isentropic Vortex, 2D Riemann Problem, KH instability, Sod shock tube (Double Mach reflection is also included but therre is a bug in BCs which is about to be fixed in the future)
 
 ![Isentropic Vortex animation](images/vor_20s.gif)
 
