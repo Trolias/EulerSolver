@@ -90,13 +90,9 @@ def WENO5(U, axis=0, vars=params.Vars[params.var_counter], eps=1e-6):
 
 
 def interface(var, k_face, axis=0):
-    """
-    var: (Ny, Nx, nvar) for axis=0, or can be transposed
-    k_face: interface index
-    axis: 0 for x-direction, 1 for y-direction
-    """
+
     def Stencil(U, ax):
-        if ax == 0:  # x-direction: slice along axis=1 (columns)
+        if ax == 0:  # x-direction
             SL = jnp.stack([U[:, k_face-2, :],
                             U[:, k_face-1, :],
                             U[:, k_face,   :],
@@ -108,7 +104,7 @@ def interface(var, k_face, axis=0):
                             U[:, k_face+1, :],
                             U[:, k_face,   :],
                             U[:, k_face-1, :]], axis=0)
-        else:  # y-direction: slice along axis=0 (rows)
+        else:  # y-direction
             SL = jnp.stack([U[k_face-2, :, :],
                             U[k_face-1, :, :],
                             U[k_face,   :, :],
@@ -124,56 +120,104 @@ def interface(var, k_face, axis=0):
 
     SL, SR = Stencil(var, axis)
     
-    # SL and SR now have shape (5, line_length, nvar)
-    # where line_length = Ny for axis=0, Nx for axis=1
     
     if params.Vars[params.var_counter] == "Characteristic Variables":
-        L, R = eigen_LR(var, k_face, axis)  # Also needs axis!
-        # ... rest of characteristic variable logic
-        WL_stencil = jnp.einsum('ij,sjk->sik', L, SL)  # Better than (L @ SL.T).T
-        WR_stencil = jnp.einsum('ij,sjk->sik', R, SR)
-        
-        WL = weno5_local(WL_stencil)
-        UL = R @ WL
-        WR = weno5_local(WR_stencil)
-        UR = R @ WR
+        L, R = eigen_LR(var, k_face, axis)  
+
+        WL_stencil = jnp.einsum('lij,slj->sli', L, SL)  # (5,line,4)
+        WR_stencil = jnp.einsum('lij,slj->sli', L, SR)  # (5,line,4)
+
+        # Reconstruct in characteristic space
+        WL = weno5_local(WL_stencil)  # (line,4)
+        WR = weno5_local(WR_stencil)  # (line,4)
+
+        # Back to conservative: U = R W
+        UL = jnp.einsum('lij,lj->li', R, WL)  # (line,4)
+        UR = jnp.einsum('lij,lj->li', R, WR)  # (line,4)
     else:
         UL = weno5_local(SL)  # (line_length, nvar)
         UR = weno5_local(SR)
     
     return UL, UR
 
-def eigen_LR(U, i):
+def eigen_LR(U, k_face, axis=0):
 
-    Uavg = 0.5*(U[i] + U[i+1]) 
+    if axis == 0:  # x-direcrtion
+        Uavg = 0.5 * (U[:, k_face, :] + U[:, k_face+1, :])  
+        nx, ny = 1.0, 0.0
+    else:          # y-direction
+        Uavg = 0.5 * (U[k_face, :, :] + U[k_face+1, :, :])  # (Nx,4)
+        nx, ny = 0.0, 1.0
 
-    rho = jnp.maximum(Uavg[0], 1e-12)
-    u = Uavg[1] / rho
-    E = Uavg[2]
-    p = jnp.maximum((params.gamma - 1.0) * (E - 0.5 * rho * u*u), 1e-12)
+    tx, ty = -ny, nx  # tangent
 
+    rho = jnp.maximum(Uavg[:, 0], 1e-12)
+    u   = Uavg[:, 1] / rho
+    v   = Uavg[:, 2] / rho
+    E   = Uavg[:, 3]
+
+    p = jnp.maximum((params.gamma - 1.0) * (E - 0.5*rho*(u*u + v*v)), 1e-12)
     a = jnp.sqrt(params.gamma * p / rho)
     H = (E + p) / rho
 
-    # Eigenvalue Matrix ' R '
-    r1 = jnp.array([1.0, u - a, H - u*a])
-    r2 = jnp.array([1.0, u,     0.5*u*u])
-    r3 = jnp.array([1.0, u + a, H + u*a])
-    R  = jnp.stack([r1, r2, r3], axis=1)
+    un = u*nx + v*ny
+    ut = u*tx + v*ty
 
-    # Left eigenvectors ' L = R_inverse '
-    L0 = jnp.array([0.25*(params.gamma-1.0)*u*u/(a**2) + 0.5*u/a,
-                    -0.5*(params.gamma-1.0)*u/(a**2) - 0.5/a,
-                    0.5*(params.gamma-1.0)/(a**2)])
-    L1 = jnp.array([1.0 - 0.5*(params.gamma-1.0)*u*u/(a**2),
-                    (params.gamma-1.0)*u/(a**2),
-                    -(params.gamma-1.0)/(a**2)])
-    L2 = jnp.array([0.25*(params.gamma-1.0)*u*u/(a**2) - 0.5*u/a,
-                    -0.5*(params.gamma-1.0)*u/(a**2) + 0.5/a,
-                    0.5*(params.gamma-1.0)/(a**2)])
-    L  = jnp.stack([L0, L1, L2], axis=0)  
+    a2   = a*a
+    gm1  = params.gamma - 1.0
+    beta = gm1 / a2
+    q2   = un*un + ut*ut
+
+    one  = jnp.ones_like(rho)
+    zero = jnp.zeros_like(rho)
+
+    r1 = jnp.stack([one,
+                    u - a*nx,
+                    v - a*ny,
+                    H - a*un], axis=1)
+
+    r2 = jnp.stack([zero,          
+                    one*tx,
+                    one*ty,
+                    ut], axis=1)
+
+    r3 = jnp.stack([one,
+                    u,
+                    v,
+                    0.5*(u*u + v*v)], axis=1)
+
+    r4 = jnp.stack([one,
+                    u + a*nx,
+                    v + a*ny,
+                    H + a*un], axis=1)
+
+    R = jnp.stack([r1, r2, r3, r4], axis=2)  # (line,4,4)
+
+    # ---- Left eigenvectors (rows) analytically ----
+    K = 0.25 * beta * q2
+
+    # rows in (rho, m_n, m_t, E)
+    l1p = (K + 0.5*un/a,  -0.5*beta*un - 0.5/a,  -0.5*beta*ut,  0.5*beta)
+    l2p = (-ut,           0.0*un,               one,          0.0*un)
+    l3p = (one - 0.5*beta*q2,  beta*un,          beta*ut,     -beta)
+    l4p = (K - 0.5*un/a,  -0.5*beta*un + 0.5/a,  -0.5*beta*ut,  0.5*beta)
+
+    def to_xy(lrho, lmn, lmt, lE):
+        lmx = lmn*nx + lmt*tx
+        lmy = lmn*ny + lmt*ty
+        return jnp.stack([lrho, lmx, lmy, lE], axis=1)  # (line,4)
+
+    l1 = to_xy(*l1p)
+    l2 = to_xy(*l2p)
+    l3 = to_xy(*l3p)
+    l4 = to_xy(*l4p)
+
+    L = jnp.stack([l1, l2, l3, l4], axis=1)  # (line,4,4) with rows
 
     return L, R
+
+
+
 
 
 
